@@ -29,7 +29,7 @@ def echo_request(path):
     if request.content_type == 'application/json':
         try:
             json_body = json.loads(body)
-            validate(instance=json_body, schema=schema)
+            #validate(instance=json_body, schema=schema)
         except json.JSONDecodeError:
             return jsonify({"error": "Invalid JSON format"}), 400
         except ValidationError as e:
