@@ -1,7 +1,18 @@
 from flask import Flask, request, jsonify
+from jsonschema import validate, ValidationError
+import json
 
 # Initialize the Flask application
 app = Flask(__name__)
+
+# Define a simple JSON schema for validation
+schema = {
+    "type": "object",
+    "properties": {
+        "message": {"type": "string"},
+    },
+    "required": ["message"]
+}
 
 # Define a catch-all route that handles all paths and common HTTP methods.
 # 'defaults={'path': ''}' handles the root path ('/')
@@ -12,17 +23,18 @@ def echo_request(path):
     """
     Captures and echoes the incoming HTTP request details (method, path, headers, and body).
     """
-
-    # Extract headers into a standard dictionary (request.headers is a special object)
     headers = {k: v for k, v in request.headers.items()}
+    body = request.get_data(as_text=True)
 
-    # Extract request body as text. This handles JSON, form data, or raw text payloads.
-    try:
-        body = request.get_data(as_text=True)
-    except Exception as e:
-        body = f"Could not decode body: {e}"
+    if request.content_type == 'application/json':
+        try:
+            json_body = json.loads(body)
+            validate(instance=json_body, schema=schema)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Invalid JSON format"}), 400
+        except ValidationError as e:
+            return jsonify({"error": f"JSON validation error: {e.message}"}), 400
 
-    # Construct the response object with all captured details
     response_data = {
         "message": "Request successfully echoed! Details below:",
         "method": request.method,
@@ -33,7 +45,6 @@ def echo_request(path):
         "body_content": body,
     }
 
-    # Use jsonify to ensure a proper JSON response format
     return jsonify(response_data)
 
 # Run the app, listening on all public IPs (0.0.0.0) which is necessary for Docker
